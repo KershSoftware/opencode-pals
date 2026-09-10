@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.superpowers/
+.playwright-mcp/
+opencode.smoke.json
+opencode.smoke.jsonc
+tui.smoke.json
+tui.smoke.jsonc
+__pycache__/
+*.tgz
+task-2-demo-desktop.png
