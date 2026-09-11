@@ -2,6 +2,8 @@
 
 The public MIT package is `opencode-pals`. End users run `npx opencode-pals@latest install` or `uninstall` with Node 22+. Maintainers build with **Bun 1.3.13**, **Node 24**, and **npm >=11.5.1**. The repository is `KershSoftware/opencode-pals`.
 
+**Current status:** [0.1.0 is published](https://www.npmjs.com/package/opencode-pals/v/0.1.0), and npm's trusted publisher is configured for this repository's `release.yml`, including direct publication permission. The [hosted validation run](https://github.com/KershSoftware/opencode-pals/actions/runs/34553980857) passed; registry-delivered install/update/uninstall was verified in an isolated environment. The first OIDC-backed publication will occur on a future version tag. The bootstrap section below is a historical procedure, not a command to republish 0.1.0.
+
 ## First publication: local bootstrap
 
 The package must exist before its npm trusted publisher can be configured. The initial approved version is **0.1.0**. From a reviewed checkout containing the packaging and release changes, verify `package.json` still names `opencode-pals@0.1.0`, then:
@@ -39,6 +41,12 @@ After bootstrap, open **npmjs.com → opencode-pals → Settings → Trusted pub
 | Allowed actions | Explicitly enable direct **`npm publish`** |
 
 **Since September 3, 2026, new connections default to stage-only.** This workflow uses direct publishing, so leaving that default is insufficient. The workflow must be present at `.github/workflows/release.yml`. Field spelling/case and the package's `repository.url` must match the GitHub repository. Use a public repository for provenance.
+
+For a package that has not yet been linked, the equivalent CLI setup is below. This repository's link already exists. npm 11.19.1 supports the required permission flag; older clients can fail with HTTP 400 because they omit the newer permission fields. The temporary client does not upgrade your installed npm and still requires the account's browser/2FA approval.
+
+```sh
+npm exec --yes --package=npm@11.19.1 -- npm trust github opencode-pals --file release.yml --repository KershSoftware/opencode-pals --allow-publish --registry https://registry.npmjs.org/
+```
 
 No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is required. OIDC is granted only to the publish job, which runs on a GitHub-hosted runner. There is no `npm whoami` gate: OIDC authentication happens during `npm publish`. See [npm trusted-publisher documentation](https://docs.npmjs.com/trusted-publishers) for setup and troubleshooting.
 
