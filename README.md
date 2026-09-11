@@ -4,21 +4,19 @@ A native pixel companion that reacts to your OpenCode session.
 
 ![OpenCode Pals jelly companion](docs/images/pals.png)
 
-## Install globally from the repo
+## Install
 
-Prerequisites: tested with **OpenCode 1.18.30**, **Bun 1.3.13**, and a true-color terminal with half-block glyphs.
+Requires **Node.js 22+**, **OpenCode 1.18.30**, and a true-color terminal with half-block glyphs.
 
 ```sh
-git clone https://github.com/KershSoftware/opencode-pals.git
-cd opencode-pals
-bun install --frozen-lockfile
-bun run build
-bun run install:global
+npx opencode-pals@latest install
 ```
 
 Quit and restart OpenCode from any project, then open `/pals` → **Pals settings**.
 
-Uninstall from the checkout: `bun run uninstall:global`, then restart OpenCode.
+Run the same command to update. Uninstall: `npx opencode-pals@latest uninstall`, then restart OpenCode. Settings and preferences are preserved.
+
+Source development uses Bun **1.3.13**: see [source setup](docs/setup.md#source-checkout).
 
 ## One-off native testing
 
@@ -38,4 +36,4 @@ Load these skills by name in OpenCode, or read their instructions:
 - [pals-try-native](.opencode/skills/pals-try-native/SKILL.md) — Try a candidate in native OpenCode.
 - [pals-global-setup](.opencode/skills/pals-global-setup/SKILL.md) — Install, update, or uninstall globally.
 
-[Detailed setup and reference](docs/setup.md)
+[Detailed setup and reference](docs/setup.md) · [Release guide](https://github.com/KershSoftware/opencode-pals/blob/main/docs/releasing.md)

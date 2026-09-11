@@ -18,3 +18,16 @@ console.log(`Built ${result.outputs.map(output => `${output.path} (${output.size
 console.log('Externalization verified: no Solid/OpenTUI/OpenCode inputs bundled')
 const imports = new Bun.Transpiler({ loader: 'js' }).scanImports(await result.outputs[0]!.text())
 console.log(`Emitted runtime imports: ${[...new Set(imports.map(item => item.path))].join(', ')}`)
+
+const cli = await Bun.build({
+  entrypoints: ['scripts/cli.ts'], outdir: 'dist', target: 'node', format: 'esm',
+  banner: `/* Bundled jsonc-parser 3.3.1\n${await Bun.file(import.meta.resolveSync('jsonc-parser/LICENSE.md')).text()}*/`,
+  // jsonc-parser's UMD wrapper hides relative requires from the bundler.
+  plugins: [{ name: 'jsonc-esm', setup(build) {
+    build.onResolve({ filter: /^jsonc-parser$/ }, () => ({ path: import.meta.resolveSync('jsonc-parser/lib/esm/main.js') }))
+  } }],
+})
+if (!cli.success) throw new AggregateError(cli.logs, 'CLI build failed')
+const { chmod } = await import('node:fs/promises')
+await chmod('dist/cli.js', 0o755)
+console.log(`Built Node CLI: ${cli.outputs[0]!.path}`)

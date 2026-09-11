@@ -1,31 +1,33 @@
+// Called by prepack: inspect the actual npm inventory without recursing into prepack.
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, realpath } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
 
-const root = resolve(import.meta.dir, '..')
-const out = await realpath(await mkdtemp(join(tmpdir(), 'pals-package-')))
-const pack = Bun.spawn(['bun', 'pm', 'pack', '--destination', out], { cwd: root, stdout: 'inherit', stderr: 'inherit' })
-assert.equal(await pack.exited, 0)
-const archive = (await readdir(out)).find(name => name.endsWith('.tgz'))!
-const extract = Bun.spawn(['tar', '-xzf', join(out, archive), '-C', out], { stdout: 'inherit', stderr: 'inherit' })
-assert.equal(await extract.exited, 0)
-const pkg = join(out, 'package')
-const entries = (await readdir(pkg, { recursive: true, withFileTypes: true }))
-  .filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(pkg.length + 1)).sort()
-assert.deepEqual(entries, ['README.md', 'dist/index.js', 'docs/character-workflow.md', 'docs/images/pals.png', 'docs/integration-evidence.md', 'docs/setup.md', 'package.json', 'scripts/global-setup.ts'])
-const manifest = await Bun.file(join(pkg, 'package.json')).json()
+const manifest = await Bun.file('package.json').json()
 assert.equal(manifest.name, 'opencode-pals')
+assert.equal(manifest.private, undefined)
+assert.equal(manifest.license, 'MIT')
+assert.equal(manifest.bin['opencode-pals'], 'dist/cli.js')
 assert.equal(manifest.exports['./tui'], './dist/index.js')
-const built = await Bun.file(join(root, 'dist/index.js')).text()
-assert.equal(await Bun.file(join(pkg, 'dist/index.js')).text(), built)
-const meta = await Bun.file(join(root, 'dist/metafile.json')).json()
+assert.equal(Object.keys(manifest.dependencies ?? {}).length, 0)
+const child = Bun.spawn(['npm', 'pack', '--dry-run', '--ignore-scripts', '--json'], { stdout: 'pipe', stderr: 'inherit' })
+const inventory = JSON.parse(await new Response(child.stdout).text())[0]
+assert.equal(await child.exited, 0)
+assert.deepEqual(inventory.files.map((file: { path: string }) => file.path).sort(),
+  ['LICENSE', 'README.md', 'dist/cli.js', 'dist/index.js', 'docs/character-workflow.md',
+    'docs/images/pals.png', 'docs/integration-evidence.md', 'docs/setup.md', 'package.json'])
+for (const file of manifest.files) assert((await stat(file)).size > 0, file)
+const built = await Bun.file('dist/index.js').text()
+const meta = await Bun.file('dist/metafile.json').json()
 for (const art of ['catalog', 'jelly', 'hats', 'compose', 'timeline', 'raster'])
   assert(Object.keys(meta.inputs).some(name => name.endsWith(`/art/${art}.ts`)), `${art} runtime art missing`)
 assert(Object.keys(meta.inputs).every(name => !name.includes('node_modules/') && !name.includes('tests/')))
-const imports = [...new Set(new Bun.Transpiler({ loader: 'js' }).scanImports(built).map(item => item.path))].sort()
-assert.deepEqual(imports, ['@opentui/core', '@opentui/solid', 'solid-js'])
-const result = { ok: true, archive: join(out, archive), entry: join(pkg, 'dist/index.js'), entries,
-  bundledRuntimeArtwork: true, bundledHostDependencies: false, sha256: new Bun.CryptoHasher('sha256').update(built).digest('hex') }
-await Bun.write(join(root, '.superpowers/package-audit.json'), JSON.stringify(result, null, 2))
-console.log(JSON.stringify(result, null, 2))
+const hostImports = [...new Set(new Bun.Transpiler({ loader: 'js' }).scanImports(built).map(item => item.path))].sort()
+assert.deepEqual(hostImports, ['@opentui/core', '@opentui/solid', 'solid-js'])
+const cli = await readFile('dist/cli.js', 'utf8')
+assert(cli.startsWith('#!/usr/bin/env node\n'))
+assert((await stat('dist/cli.js')).mode & 0o111)
+const imports = new Bun.Transpiler({ loader: 'js' }).scanImports(cli.replace(/^#![^\n]*\n/, ''))
+assert(imports.every(item => item.path.startsWith('node:')), 'CLI must bundle every non-Node dependency')
+const help = Bun.spawn(['node', 'dist/cli.js', '--help'], { stdout: 'inherit', stderr: 'inherit' })
+assert.equal(await help.exited, 0)
+console.log(`Package inventory and Node CLI verified: ${inventory.files.length} files`)

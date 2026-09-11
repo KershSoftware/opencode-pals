@@ -1,0 +1,111 @@
+name: npm release
+
+on:
+  push:
+    tags: ['v*']
+  # Every manual run is validation-only, even when a tag is selected.
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    # Explicit bash enables pipefail, so tee cannot hide validation failures.
+    shell: bash
+
+concurrency:
+  group: npm-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+      - name: Check release identity and toolchain
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          assert.equal(pkg.name, 'opencode-pals');
+          assert.equal(pkg.license, 'MIT');
+          // Only stable versions go to latest. Prereleases need an explicit policy.
+          assert.match(pkg.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+          if (process.env.RELEASE_EVENT === 'push' || process.env.RELEASE_REF.startsWith('refs/tags/')) {
+            assert.equal(process.env.RELEASE_REF, `refs/tags/v${pkg.version}`, 'Tag must exactly match package.json version');
+          }
+          const [major, minor, patch] = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim().split('.').map(Number);
+          assert(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))), 'npm >=11.5.1 required');
+          NODE
+          git ls-files --error-unmatch bun.lock
+          bun --version
+          node --version
+          npm --version
+      - name: Install committed dependencies
+        run: bun install --frozen-lockfile
+      - name: Test and typecheck
+        run: |
+          bun test
+          bun run typecheck
+      - name: Build and audit release archive
+        run: |
+          mkdir -p release
+          # prepack builds and audits package inventory and runtime imports.
+          npm pack --pack-destination release 2>&1 | tee release/pack.log
+          sha256sum release/*.tgz > release/SHA256SUMS
+      - name: Verify the packed Node CLI
+        run: bun scripts/verify-npm-install.ts release/*.tgz 2>&1 | tee release/cli-verification.log
+      - name: Dry-run publication of the verified archive
+        run: |
+          npm publish release/*.tgz --dry-run --ignore-scripts --access public --tag latest --registry https://registry.npmjs.org/ 2>&1 | tee release/publish-dry-run.log
+          sha256sum --check release/SHA256SUMS
+      - name: Retain release archive and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-release-${{ github.run_id }}
+          overwrite: true
+          path: release/
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'KershSoftware/opencode-pals'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org/'
+          package-manager-cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-${{ github.run_id }}
+          path: release/
+      - name: Publish verified archive with npm trusted publishing
+        run: |
+          node -e 'const [a,b,c]=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number); require("node:assert")(a>11||(a===11&&(b>5||(b===5&&c>=1))),"npm >=11.5.1 required")'
+          sha256sum --check release/SHA256SUMS
+          npm publish release/*.tgz --ignore-scripts --access public --tag latest --provenance --registry https://registry.npmjs.org/

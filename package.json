@@ -5,15 +5,22 @@
   "repository": { "type": "git", "url": "https://github.com/KershSoftware/opencode-pals.git" },
   "homepage": "https://github.com/KershSoftware/opencode-pals#readme",
   "bugs": { "url": "https://github.com/KershSoftware/opencode-pals/issues" },
-  "private": true,
+  "license": "MIT",
+  "author": "KershSoftware",
+  "keywords": ["opencode", "tui", "pixel-art", "companion"],
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "bin": { "opencode-pals": "dist/cli.js" },
   "type": "module",
   "exports": { "./tui": "./dist/index.js" },
-  "files": ["dist/index.js", "scripts/global-setup.ts", "README.md", "docs/setup.md", "docs/images/pals.png", "docs/character-workflow.md", "docs/integration-evidence.md"],
+  "files": ["dist/index.js", "dist/cli.js", "LICENSE", "README.md", "docs/setup.md", "docs/images/pals.png", "docs/character-workflow.md", "docs/integration-evidence.md"],
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "demo": "bun scripts/demo.ts",
     "build": "bun scripts/build.ts",
+    "prepack": "bun run build && bun scripts/verify-package.ts",
+    "prepublishOnly": "bun test && bun run typecheck",
     "try:pal": "bun scripts/try-pal.ts",
     "install:global": "bun scripts/global-setup.ts install",
     "uninstall:global": "bun scripts/global-setup.ts uninstall"
@@ -26,9 +33,7 @@
     "typescript": "5.8.2",
     "@opencode-ai/plugin": "1.18.30",
     "@opencode-ai/sdk": "1.18.30",
-    "@types/bun": "1.3.13"
-  },
-  "dependencies": {
+    "@types/bun": "1.3.13",
     "jsonc-parser": "3.3.1"
   }
 }

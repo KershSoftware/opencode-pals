@@ -1,17 +1,24 @@
 // Only manages the copied Pals TUI entry, never server plugins or host preferences.
 import { lstat, mkdir, readFile, rename, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, isAbsolute, join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { basename, isAbsolute, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { applyEdits, createScanner, findNodeAtLocation, getNodeValue, modify, parseTree, SyntaxKind, type Edit, type Node, type ParseError } from 'jsonc-parser'
 
-const help = `OpenCode Pals global setup (Bun required)
+const help = `OpenCode Pals global setup
 
+  opencode-pals install
+  opencode-pals uninstall
+  opencode-pals --help
+  npx opencode-pals@latest <install|uninstall>
+
+Source checkout (Bun 1.3.13):
   bun run install:global [--help]
   bun run uninstall:global [--help]
   bun /path/to/opencode-pals/scripts/global-setup.ts <install|uninstall> [--help]
 
-Install/update: first run bun run build. Copies this package's dist/index.js to
+Install/update: source users first run bun run build; npm includes the build.
+Copies this package's dist/index.js to
 $XDG_CONFIG_HOME/opencode/pals/index.js (default: ~/.config/opencode/pals/index.js).
 The copy survives moving/deleting the checkout. Uninstall needs no build.
 Both tui.json and tui.jsonc are validated; existing exact file-URL entries and
@@ -195,7 +202,7 @@ async function main() {
       (args.length === 2 && ['install', 'uninstall'].includes(args[0]) && ['--help', '-h'].includes(args[1]))) {
     console.log(help); return
   }
-  if (args.length !== 1 || !['install', 'uninstall'].includes(args[0])) throw new Error('Usage: global-setup.ts <install|uninstall> [--help]')
+  if (args.length !== 1 || !['install', 'uninstall'].includes(args[0])) throw new Error('Usage: opencode-pals <install|uninstall> [--help]')
   const install = args[0] === 'install'
   const base = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
   if (!isAbsolute(base)) throw new Error('XDG_CONFIG_HOME (or HOME) must be absolute')
@@ -210,7 +217,7 @@ async function main() {
   let configs = (await Promise.all(['tui.json', 'tui.jsonc'].map(name => config(join(dir, name))))).filter((c): c is Config => !!c)
   let build: Buffer | undefined
   if (install) {
-    const source = resolve(import.meta.dir, '../dist/index.js')
+    const source = fileURLToPath(new URL('../dist/index.js', import.meta.url))
     if (!await regular(source) || !(build = await readFile(source)).length)
       throw new Error(`Missing or empty build: ${source}. Run bun run build first.`)
     const before = unrelatedSignature(configs, url)

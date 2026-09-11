@@ -6,7 +6,19 @@ The accepted three-quarter candidate is **14 terminal columns × 13 visible sour
 
 ## Quickstart: install globally
 
-Prerequisites: OpenCode **1.18.30**, Bun **1.3.13**, and a true-color terminal with half-block glyphs. Bash and Node are also needed for the optional Superpowers browser demo; Python 3 is needed for native acceptance scripts.
+Prerequisites: OpenCode **1.18.30**, Node.js **22+** with npm, and a true-color terminal with half-block glyphs. Bun is not required for the npm CLI.
+
+```sh
+npx opencode-pals@latest install
+# Run again to update; remove the managed host installation with:
+npx opencode-pals@latest uninstall
+```
+
+Alternatively, `npm install -g opencode-pals` provides `opencode-pals install` and `opencode-pals uninstall`. Run the latter before `npm uninstall -g opencode-pals` if you also want to remove Pals from OpenCode. The Pals uninstall command manages host config and the copied artifact, not npm's cache or installed CLI. Installing the npm package alone does not edit config; there is no postinstall hook.
+
+### Source checkout
+
+Source development requires Bun **1.3.13**. Bash and Node are needed for the optional Superpowers browser demo; Python 3 is needed for native acceptance scripts.
 
 Fresh checkout:
 
@@ -24,11 +36,11 @@ Quit and restart OpenCode **from any project**, type `/pals`, select **Pals sett
 
 The helper adds the exact, space-safe file URL to your global **TUI** config. It reads and validates both `tui.json` and `tui.jsonc` because OpenCode 1.18.30 loads both, JSON first and JSONC second. An existing matching entry (including its options) is retained; otherwise it appends to JSONC if present, else JSON, creating JSON only when neither exists. If a later empty plugin array masks only Pals, the helper adds that entry with its options to the later array too. If making an empty override nonempty would revive suppressed unrelated plugins, installation refuses before writing and asks you to resolve the override. Comments, other settings, and unrelated plugin options are preserved; edited array formatting may change. Running install again updates the copied build without adding another entry.
 
-This is a **TUI plugin**: do not put it in `opencode.json`'s server-plugin array or auto-discovered server-plugin directories. The built-in `opencode plugin <module> --global` command has no uninstall counterpart in 1.18.30, so this private, unpublished package uses its own narrow setup helper.
+This is a **TUI plugin**: do not put it in `opencode.json`'s server-plugin array or auto-discovered server-plugin directories. The built-in `opencode plugin <module> --global` command has no uninstall counterpart in 1.18.30, so Pals uses its own narrow setup helper.
 
 ### Update
 
-From an updated source checkout:
+For npm, repeat `npx opencode-pals@latest install`. From an updated source checkout:
 
 ```sh
 bun install --frozen-lockfile
@@ -40,7 +52,7 @@ Quit and restart OpenCode to load the new copy. Your Pals preferences are retain
 
 ### Uninstall
 
-From this checkout (or another copy with dependencies installed):
+For npm, use `npx opencode-pals@latest uninstall`. From a source checkout with dependencies installed:
 
 ```sh
 bun run uninstall:global
@@ -160,6 +172,6 @@ Run native scripts sequentially. They launch isolated local servers/PTYs, disabl
 
 Normal tests/build and demo generation use only checked-in sources, including the preserved original oracle in `tests/fixtures/approved-v9.js`. The live demo additionally requires the actual Superpowers install above. Optional `bun scripts/verify-three-quarter-preview.ts` discovers Chromium on PATH; set `PALS_CHROMIUM_EXECUTABLE="/path/to/chromium"` to override. `bun scripts/verify-companion-recovery.ts` accepts `SUPERPOWERS_DIR` and uses the system temporary directory. Native capture visualizers require newly generated evidence; historical half-size/hat-spacing generators are disabled.
 
-The local package is private and unpublished. `exports["./tui"]` points to `dist/index.js`; all runtime artwork is compiled into that file. After building, `bun pm pack --destination "/path/to/output-directory"` creates a local archive. Its allowlist includes the built entry, `scripts/global-setup.ts`, and user docs, excluding generated sessions, keys, fixtures, local config, build metafile, and dependencies. After extraction, run `bun install --production` and `bun run install:global` from the extracted package; its build is already included. The helper uses `jsonc-parser`; the installed TUI artifact only needs OpenCode's host runtime. The source archive audit exercises these packed install/uninstall commands. Use the source tree with `bun.lock`, `src/`, `demo/`, and `scripts/` for rebuilding and live art editing.
+The public npm package is `opencode-pals@0.1.0`, licensed MIT. `exports["./tui"]` points to `dist/index.js`; all runtime artwork is compiled into that file. From source, `npm pack --pack-destination "/path/to/output-directory"` builds and audits a local archive via `prepack`. `prepublishOnly` additionally runs tests and typechecking before publication. The allowlist contains the TUI build, executable `dist/cli.js`, MIT license, README image, and user docs; it excludes source, local config, build metadata, and dependencies. The Node CLI bundles `jsonc-parser`; an extracted archive runs with `node dist/cli.js install` or `node dist/cli.js uninstall`, with no dependency install or Bun required. The copied TUI artifact needs OpenCode's host runtime. Source-only npm scripts are development commands, not requirements for using the packed CLI. Use the source tree with `bun.lock`, `src/`, `demo/`, and `scripts/` for rebuilding and live art editing.
 
 See [integration evidence](integration-evidence.md) for version-pinned API references, measured sizes, historical versus current checks, and final acceptance results. **Please check the jelly in your normal terminal font and size before adding another character.**

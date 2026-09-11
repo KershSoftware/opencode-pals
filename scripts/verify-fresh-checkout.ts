@@ -21,7 +21,7 @@ async function run(command: string[], cwd = checkout) {
 }
 const archive = join(root, 'source.tgz')
 const entries = ['.gitignore', 'package.json', 'bun.lock', 'bunfig.toml', 'tsconfig.json',
-  'tui.json', 'README.md', 'AGENTS.md', '.opencode', 'src', 'demo', 'scripts', 'tests', 'docs']
+  'tui.json', 'README.md', 'LICENSE', 'AGENTS.md', '.opencode', 'src', 'demo', 'scripts', 'tests', 'docs']
 await run(['tar', '--exclude=__pycache__', '--exclude=*.tgz', '-czf', archive, ...entries], source)
 await run(['tar', '-xzf', archive, '-C', checkout])
 for (const reference of ['AGENTS.md', ...['pals-create-character', 'pals-try-native', 'pals-global-setup']
@@ -44,18 +44,17 @@ await run([process.execPath, '-e', `const { buildScreen } = await import('./scri
 assert.deepEqual(await Bun.file(join(checkout, 'tui.json')).json(), {
   $schema: 'https://opencode.ai/tui.json', plugin: ['./dist/index.js'],
 })
-// The runtime archive must carry the one-purpose installer and its dependency.
+// The runtime archive carries a dependency-free Node CLI.
 const packed = join(root, 'packed'), unpacked = join(root, 'unpacked')
 await mkdir(packed); await mkdir(unpacked)
-await run([process.execPath, 'pm', 'pack', '--destination', packed])
+await run(['npm', 'pack', '--pack-destination', packed])
 await run(['tar', '-xzf', join(packed, `opencode-pals-${manifest.version}.tgz`), '-C', unpacked])
 const runtime = join(unpacked, 'package')
-assert(existsSync(join(runtime, 'scripts/global-setup.ts')))
+assert(existsSync(join(runtime, 'dist/cli.js')))
 assert(!existsSync(join(runtime, 'tui.json')))
-await run([process.execPath, 'install', '--production'], runtime)
-await run([process.execPath, 'run', 'install:global'], runtime)
+await run(['node', 'dist/cli.js', 'install'], runtime)
 const installed = join(env.XDG_CONFIG_HOME!, 'opencode/pals/index.js')
 assert.deepEqual(await Bun.file(installed).arrayBuffer(), await Bun.file(join(runtime, 'dist/index.js')).arrayBuffer())
-await run([process.execPath, 'run', 'uninstall:global'], runtime)
+await run(['node', 'dist/cli.js', 'uninstall'], runtime)
 assert(!existsSync(installed))
 console.log(JSON.stringify({ ok: true, root, checkout, isolatedHome: home, commands }, null, 2))

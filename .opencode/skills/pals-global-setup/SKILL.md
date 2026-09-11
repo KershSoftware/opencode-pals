@@ -1,13 +1,17 @@
 ---
 name: pals-global-setup
-description: Use when installing, updating, or uninstalling OpenCode Pals globally from a source checkout or extracted runtime archive, or when Pals remains active after global uninstall.
+description: Use when installing, updating, or uninstalling OpenCode Pals globally through npm, a source checkout, or an extracted runtime archive, or when Pals remains active after global uninstall.
 ---
 
 # Pals global setup
 
-Requires Bun **1.3.13**, OpenCode **1.18.30**, and a true-color terminal with half-block glyphs. Run commands from the checkout/extracted package root.
+Requires OpenCode **1.18.30** and a true-color terminal with half-block glyphs. npm setup uses **Node.js 22+**; source development uses **Bun 1.3.13**.
 
 ## Commands
+
+npm install/update: `npx opencode-pals@latest install`.
+npm uninstall: `npx opencode-pals@latest uninstall`.
+This removes the managed host installation, not the npm cache or CLI package.
 
 Fresh source checkout:
 
@@ -24,11 +28,10 @@ Source update: update the checkout, then repeat dependency install, build, and `
 Extracted prebuilt runtime archive (includes `dist/index.js`):
 
 ```sh
-bun install --production
-bun run install:global
+node dist/cli.js install
 ```
 
-Uninstall from either package with dependencies installed:
+Source uninstall (dependencies installed):
 
 ```sh
 bun run uninstall:global
@@ -37,6 +40,7 @@ bun run uninstall:global
 Uninstall needs **no build**. From another cwd:
 `bun "/path with spaces/opencode-pals/scripts/global-setup.ts" uninstall`.
 Help: `bun run install:global --help` or `bun run uninstall:global --help`.
+Extracted archive: `node dist/cli.js uninstall` or `node dist/cli.js --help`; no Bun or dependency install required.
 
 ## Scope and preservation
 

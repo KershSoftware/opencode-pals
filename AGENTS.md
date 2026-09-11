@@ -40,6 +40,6 @@ Browser preview requires the actual Superpowers installation (plus Bash/Node); s
 
 The source checkout provides authoring skills, `src/`, `demo/`, build/trial scripts, and the lockfile. Its checked-in `tui.json` locally loads `dist/index.js`. The fresh-source audit copies source into a disposable environment and exercises tests, build, demo generation, and packed install/uninstall under isolated HOME/XDG.
 
-The prebuilt runtime archive includes `dist/index.js` and the global helper: use `bun install --production`, then `bun run install:global`. It is not the authoring checkout; use source for rebuilding and previews. OpenCode supplies the artifact's runtime imports. Global setup copies the artifact independently of the clone; it does not install authoring skills globally. The package is private/unpublished; publish only on explicit request.
+The public MIT npm package includes `dist/index.js` and the bundled Node CLI: use `npx opencode-pals@latest install` / `uninstall` with Node 22+, or `node dist/cli.js install` from an extracted archive. No Bun or dependency install is needed by the end-user CLI. Use source for rebuilding and previews. OpenCode supplies the artifact's runtime imports. Global setup copies the artifact independently of the clone; it does not install authoring skills globally. Publish only on explicit request. `npm pack` builds and audits artifacts; `prepublishOnly` also tests and typechecks.
 
 Quit and restart OpenCode after plugin/config/skill changes to load them.
