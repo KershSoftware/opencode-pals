@@ -11,12 +11,12 @@ bun install --frozen-lockfile
 bun test
 bun run typecheck
 mkdir -p release
-npm pack --pack-destination release
-bun scripts/verify-npm-install.ts release/opencode-pals-0.1.0.tgz
+npm pack --pack-destination ./release
+bun scripts/verify-npm-install.ts ./release/opencode-pals-0.1.0.tgz
 npm publish ./release/opencode-pals-0.1.0.tgz --dry-run --ignore-scripts --access public --registry https://registry.npmjs.org/
 ```
 
-`npm pack` runs the build and package audit through `prepack`. The acceptance script uses real npm exec/global-bin and Node CLI install/uninstall with temporary HOME, XDG paths, npm config and cache. Publish the **same tested archive**, without rebuilding:
+`npm pack` runs the build and package audit through `prepack`. The acceptance script uses real npm exec/global-bin and Node CLI install/uninstall with temporary HOME, XDG paths, npm config and cache. Keep the leading `./` on relative tarball paths: npm can interpret `release/package.tgz` as GitHub shorthand. Publish the **same tested archive**, without rebuilding:
 
 ```sh
 npm login --registry https://registry.npmjs.org/

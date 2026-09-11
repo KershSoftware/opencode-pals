@@ -68,13 +68,13 @@ jobs:
         run: |
           mkdir -p release
           # prepack builds and audits package inventory and runtime imports.
-          npm pack --pack-destination release 2>&1 | tee release/pack.log
+          npm pack --pack-destination ./release 2>&1 | tee release/pack.log
           sha256sum release/*.tgz > release/SHA256SUMS
       - name: Verify the packed Node CLI
-        run: bun scripts/verify-npm-install.ts release/*.tgz 2>&1 | tee release/cli-verification.log
+        run: bun scripts/verify-npm-install.ts ./release/*.tgz 2>&1 | tee release/cli-verification.log
       - name: Dry-run publication of the verified archive
         run: |
-          npm publish release/*.tgz --dry-run --ignore-scripts --access public --tag latest --registry https://registry.npmjs.org/ 2>&1 | tee release/publish-dry-run.log
+          npm publish ./release/*.tgz --dry-run --ignore-scripts --access public --tag latest --registry https://registry.npmjs.org/ 2>&1 | tee release/publish-dry-run.log
           sha256sum --check release/SHA256SUMS
       - name: Retain release archive and validation evidence
         if: always()
@@ -108,4 +108,4 @@ jobs:
         run: |
           node -e 'const [a,b,c]=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number); require("node:assert")(a>11||(a===11&&(b>5||(b===5&&c>=1))),"npm >=11.5.1 required")'
           sha256sum --check release/SHA256SUMS
-          npm publish release/*.tgz --ignore-scripts --access public --tag latest --provenance --registry https://registry.npmjs.org/
+          npm publish ./release/*.tgz --ignore-scripts --access public --tag latest --provenance --registry https://registry.npmjs.org/
