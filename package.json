@@ -8,7 +8,7 @@
   "private": true,
   "type": "module",
   "exports": { "./tui": "./dist/index.js" },
-  "files": ["dist/index.js", "scripts/global-setup.ts", "README.md", "docs/character-workflow.md", "docs/integration-evidence.md"],
+  "files": ["dist/index.js", "scripts/global-setup.ts", "README.md", "docs/setup.md", "docs/images/pals.png", "docs/character-workflow.md", "docs/integration-evidence.md"],
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",

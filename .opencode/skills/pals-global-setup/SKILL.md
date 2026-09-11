@@ -50,4 +50,4 @@ Project configs and `OPENCODE_TUI_CONFIG` / `OPENCODE_CONFIG_DIR` overrides are 
 
 Quit/restart OpenCode after install/update/uninstall. After installation, verify `/pals` → **Pals settings** from an unrelated project. No npm publication unless explicitly requested.
 
-See [README](../../../README.md#quickstart-install-globally) for details.
+See [setup reference](../../../docs/setup.md#quickstart-install-globally) for details.
