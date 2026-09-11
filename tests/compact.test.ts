@@ -26,14 +26,14 @@ test('fabric bucket has a fuller crown and asymmetric downturned hem, not a regu
   expect(pixel(frame, 8, 7)).toBeNull()
 })
 
-test('neutral and thinking eyes are compact one-by-two marks through the glance, with hat optional', () => {
+test('neutral and thinking eyes are compact one-by-one squares through the glance, with hat optional', () => {
   for (const mood of ['idle', 'thinking'] as const) for (const hat of ['none', 'lavender-bucket']) {
     for (const ms of [500, 1100, 2900, 3200]) {
       const frame = compose(catalog, { ...appearance, hat }, mood, ms, true)
       const dx = mood === 'thinking' && ms >= 1100 && ms < 3000 ? 1 : 0
       for (const x of [5 + dx, 11 + dx]) {
-        for (const yy of [10, 11]) expect(pixel(frame, x, yy)).toBe('#193f62')
-        for (const [nx, ny] of [[x - 1, 10], [x + 1, 10], [x + 1, 11], [x, 9], [x, 12]]) {
+        expect(pixel(frame, x, 10)).toBe('#193f62')
+        for (const [nx, ny] of [[x - 1, 10], [x + 1, 10], [x, 11], [x + 1, 11], [x, 9], [x, 12]]) {
           expect(pixel(frame, nx, ny)).not.toBe('#193f62')
         }
       }

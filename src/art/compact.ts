@@ -31,7 +31,8 @@ export const compactJelly: Character = {
       else if (pose.mood === 'done') {
         dot(x, 10, 2, 1, p.ink); dot(x - 1, 11, 1, 1, p.ink)
       } else {
-        dot(x, 10, pose.mood === 'idle' || pose.mood === 'thinking' ? 1 : 2, 2, p.ink)
+        const size = pose.mood === 'idle' || pose.mood === 'thinking' ? 1 : 2
+        dot(x, 10, size, size, p.ink)
         if (pose.mood === 'working') dot(x - (x < 9 ? 1 : 0), 9, 3, 1, p.ink)
       }
     }
