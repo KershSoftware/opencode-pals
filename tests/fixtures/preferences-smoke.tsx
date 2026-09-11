@@ -116,7 +116,8 @@ const tui: TuiPlugin = async (api, options) => {
     assert.equal(providers.all.length, 0)
     await pause(1500)
     await Bun.write(`${directory}/result.json`, JSON.stringify({ ok: true, version: api.app.version, phase,
-      draftPreserved: true, promptIdentityPreserved: true, focusPreserved: true, providerCount: 0, observations }, null, 2))
+      draftPreserved: true, promptIdentityPreserved: true, focusPreserved: true, providerCount: 0,
+      plugins: api.plugins.list(), observations }, null, 2))
   }
   void run().catch(async error => {
     await Bun.write(`${directory}/failure.txt`, screen())

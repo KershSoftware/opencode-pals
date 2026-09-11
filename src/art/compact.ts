@@ -3,8 +3,7 @@ import { lavenderBucket } from './hats'
 import { createFrame, put } from './raster'
 import type { Character, Hat, Pose } from './types'
 
-// Hand-authored three-quarter layers: preserve the reference's square eyes,
-// stepped body and shaded bucket rather than resampling away their detail.
+// Hand-authored three-quarter layers retain the stepped body and fabric detail.
 // A terminal half-cell is the smallest motion step; the hop is one pixel.
 const shift = (pose: Pose) => Math.sign(pose.dy)
 export const compactJelly: Character = {
@@ -32,7 +31,7 @@ export const compactJelly: Character = {
       else if (pose.mood === 'done') {
         dot(x, 10, 2, 1, p.ink); dot(x - 1, 11, 1, 1, p.ink)
       } else {
-        dot(x, 10, 2, 2, p.ink)
+        dot(x, 10, pose.mood === 'idle' || pose.mood === 'thinking' ? 1 : 2, 2, p.ink)
         if (pose.mood === 'working') dot(x - (x < 9 ? 1 : 0), 9, 3, 1, p.ink)
       }
     }
@@ -49,14 +48,17 @@ export const compactBucket: Hat = {
     const frame = createFrame()
     const dot = (x: number, y: number, w: number, color: string) =>
       put(frame, anchor.x + x, anchor.y + y + shift(pose), w, 1, color)
-    // Short stepped crown, light upper band, cream patch, shaded flared brim.
-    dot(1, 0, 6, '#655887')
-    dot(0, 1, 8, '#655887'); dot(1, 1, 6, '#d6c8f2')
-    dot(0, 2, 8, '#655887'); dot(1, 2, 6, '#b5a1df')
-    dot(6, 2, 1, '#9180bf'); dot(3, 2, 2, '#fff0cb')
-    dot(-3, 3, 14, '#655887'); dot(-2, 3, 12, '#9180bf')
-    dot(-1, 3, 10, '#b5a1df'); dot(0, 3, 3, '#d6c8f2')
-    dot(-3, 4, 14, '#655887')
+    // Rounded shoulder, upright fabric sides and an uneven, downturned hem.
+    // A longer right fold breaks the geometric taper without lowering the gap.
+    dot(0, 0, 7, '#8776a8'); dot(1, 0, 4, '#a591ca')
+    dot(-1, 1, 9, '#8776a8'); dot(0, 1, 7, '#bdaae0')
+    dot(1, 1, 2, '#cbbbe9'); dot(6, 1, 1, '#aa97cf')
+    dot(-1, 2, 9, '#8776a8'); dot(0, 2, 7, '#bdaae0')
+    dot(6, 2, 1, '#a591ca'); dot(3, 2, 2, '#fff0cb')
+    dot(-2, 3, 12, '#8776a8'); dot(-1, 3, 10, '#aa97cf')
+    dot(0, 3, 2, '#bdaae0'); dot(1, 3, 5, '#8776a8')
+    dot(-3, 4, 4, '#8776a8'); dot(5, 4, 6, '#8776a8')
+    dot(-2, 4, 2, '#aa97cf'); dot(6, 4, 3, '#a591ca')
     return frame
   },
 }

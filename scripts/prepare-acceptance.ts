@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 
 const source = resolve(import.meta.dir, '..')
 const root = await realpath(await mkdtemp(join(tmpdir(), 'pals-acceptance-')))
-for (const name of ['package.json', 'bun.lock', 'bunfig.toml', 'tsconfig.json', 'README.md', 'src', 'demo', 'scripts', 'tests', 'docs']) {
+for (const name of ['package.json', 'bun.lock', 'bunfig.toml', 'tsconfig.json', 'README.md', 'AGENTS.md', '.opencode', 'src', 'demo', 'scripts', 'tests', 'docs']) {
   await cp(join(source, name), join(root, name), { recursive: true,
     filter: path => !path.includes('__pycache__') })
 }

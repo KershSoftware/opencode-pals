@@ -1,6 +1,81 @@
 # Pals shared-art character workflow
 
-## Prerequisites and launch
+## One-off native trials
+
+Use a source checkout with `bun install --frozen-lockfile`, Bun **1.3.13**, and installed OpenCode **1.18.30**. No browser companion, model key, production catalog registration, publish, or global installation is needed:
+
+```sh
+bun run try:pal -- ./tests/fixtures/trial-character.ts
+bun run try:pal -- "./path with spaces/my-character.ts" --binary "/path/to/opencode"
+bun run try:pal -- ./tests/fixtures/trial-character.ts --build-only
+bun run try:pal --help
+```
+
+`--prepare` and `--build-only` mean the same thing. Flags can precede or follow the one module path; `--` is accepted as the Bun script separator. Relative module paths resolve from the invoking cwd. Source imports should use normal relative/absolute filesystem paths (Bun's bundler does not resolve `file://` source imports). The generated native plugin config uses a properly encoded file URL.
+
+### Trial module contract
+
+The **default export** is one of:
+
+```ts
+import type { Character, Hat } from './src/art/types'
+import type { PalTrial } from './scripts/native-trial'
+// PalTrial = { character: Character; hats?: Hat[] }
+```
+
+For example, save this as `my-pal.ts` at the checkout root and run `bun run try:pal -- ./my-pal.ts`:
+
+```ts
+import type { Character } from './src/art/types'
+import { createFrame, put } from './src/art/raster'
+
+export default {
+  id: 'my-pal', name: 'My trial Pal',
+  skins: [{ id: 'green', name: 'Green', palette: { body: '#00aa44' } }],
+  hats: ['none'], defaults: { skin: 'green', hat: 'none' },
+  anchor: { x: 12, y: 12 },
+  bounds: { x: 10, y: 10, width: 4, height: 10 },
+  draw(pose, skin) {
+    const frame = createFrame()
+    put(frame, 10, 13 + pose.dy, 4, 7, skin.palette.body!)
+    return frame
+  },
+} satisfies Character
+```
+
+For a character with custom accessories, export `{ character: myCharacter, hats: [myHat] } satisfies PalTrial`. `myCharacter` follows the contract above; `myHat` satisfies `Hat` (`id`, `name`, `draw(pose, anchor): Frame`). Import named character/hat exports from ordinary local modules into a small trial module if necessary. The character must list the accessory ID in `hats`; set `defaults.hat` to select it initially.
+
+The trial catalog puts your candidate first and keeps existing characters available for comparison. A matching character ID replaces that definition **only in the trial bundle's memory**. Supplied hat IDs similarly replace/add trial accessories; the built-in `none` cannot be replaced. The candidate is selected explicitly in isolated KV, even when Jelly remains in the generated catalog.
+
+Validation runs before launch: stable lowercase IDs/nonempty names, unique skins and supplied hats, nonempty `#rrggbb` palettes, valid defaults and compatible hats, integer anchor/bounds inside 24×24, draw functions, and sampled 24×24 arrays of 576 opaque `#rrggbb`/`null` pixels across all moods/skins/compatible hats. Bounds must describe the animation/accessory union. Sampling is not an exhaustive art-correctness test. Modules are trusted executable code: importing and drawing them is not sandboxed.
+
+### Inspect, exit, repeat
+
+- The default action launches the actual installed `opencode` found on PATH, then `~/.opencode/bin/opencode`; `--binary` explicitly selects another installed executable. Interactive stdin/stdout/stderr are inherited.
+- Each launch has a temporary HOME, XDG config/data/cache/state, cwd and its own `opencode.json` / `tui.json`. Providers and model fetching are disabled; inherited provider credentials and OpenCode overrides are excluded. This visual session does not have your usual projects, auth, plugins, skills or preferences.
+- `/pals` offers the candidate, skins and hats through the production native settings menu. `/pals-trial` opens **Pals trial mood**: `idle`, `thinking`, `working`, `waiting`, `done`, `error`, `interrupted`. The forced expression stays selected; transient geometry can settle. Selecting a mood restarts its timeline; `/pals` Pause uses static poses. Host animations-disabled is respected.
+- In that same trial menu, **View sidebar (empty local session)** creates only an empty local session and opens its sidebar; **View home** returns home. Waiting mood changes the expression, not the layout into a permission/question panel.
+- Quit OpenCode to delete the interactive directory. SIGINT/SIGTERM forward to the child; after five seconds an unresponsive child is killed before cleanup. An externally SIGKILLed helper cannot run cleanup; the printed cleanup command is available in that case.
+- Edit your module, then quit/rerun to rebuild and load it. This is a one-shot native build, not hot reload. The production catalog and real global configuration/preferences are never edited by the helper.
+
+### Prepared artifacts and automated native smoke
+
+`--prepare` builds without starting OpenCode and persists under ignored `.superpowers/native-trial/pals-<unique>/`. JSON stdout (status text goes to stderr) reports `directory`, `entry`, `config`, `tuiConfig`, `cwd`, `environment`, `character`, `characterName`, `bounds`, `source` (absolute module path), `sourceHash` (SHA-256 of module bytes), optional discovered `binary`, and `cleanup`; the same object is saved as `trial.json`. Use the reported paths, not a guessed newest directory. Generated bundles externalize Solid/OpenTUI/OpenCode and must run in the native host.
+
+Candidate import and sampled draw validation run in a subprocess whose stdout and stderr both go to the helper's stderr. This preserves `console.log`, `process.stdout.write`, `Bun.stdout`, direct fd-1 writes and deferred diagnostics while reserving prepare stdout for one metadata JSON document. Metadata uses a separate IPC channel, and the helper waits for successful worker exit before building/emitting success. Import/draw failures, early exit without metadata, nonzero exit and deferred errors produce a nonzero CLI exit with diagnostics on stderr and no success JSON. No global console/process stream methods are patched or muted. The worker still runs trusted local code with the invoking cwd, environment and filesystem privileges; output isolation is not a sandbox or protection against intentional IPC/descriptor manipulation, spawned descendants or arbitrary side effects. Runtime candidate logging inside an interactive native trial follows the native host's behavior.
+
+```sh
+bun run try:pal -- ./tests/fixtures/trial-character.ts --prepare
+# Substitute the directory printed by that command:
+python3 scripts/smoke-native.py --trial .superpowers/native-trial/pals-<unique>/trial.json
+# After reviewing, run the exact shell-quoted cleanup command printed by try:pal.
+```
+
+The smoke consumes the prepared entry, config, cwd, environment and initial preferences, adding a capture probe in its own `smoke/tui.json`. It captures host framebuffer spans and renderable geometry, asserts initial candidate selection and `/pals` discovery, exercises all seven moods through real slash autocomplete, and inspects home/sidebar. For `trial-character.ts`, it additionally checks a hand-derived 4-column/7-row perch, 28 green pixels at idle, and 26 green + 2 yellow pixels for error. Its guarded local proxy rejects model-submission endpoints; only empty session creation is allowed. No interactive user terminal is controlled. Evidence is in the prepared directory's `smoke/` (`result.json`, captures, `proxy.json`, `process.json`, `terminal.ansi`). The smoke changes only the prepared trial's preferences/session state; prepare afresh for a clean rerun.
+
+The demonstration pixel oracle requires the checked-in fixture's exact source path and pinned content hash in the prepared manifest. Adaptations (including those retaining `trial-sprout`), copies, and older manifests without source identity use generic selection, menu and geometry checks; candidate-specific pixel correctness needs its own oracle. `--trial` is a standalone smoke mode, not combined with `--entry`, installation or other fixture modes. `--binary` on the smoke command selects its installed host. The prepared directory persists until its printed cleanup command is run.
+
+## Browser preview prerequisites and launch
 
 Use Bun **1.3.13**, Bash, Node (required by the installed companion), and an installed Superpowers package with `skills/brainstorming/scripts/start-server.sh`. This demo targets the OpenCode **1.18.30** placement study. Install project dependencies with `bun install --frozen-lockfile` if needed. Runtime versions and the art's 24 × 24 coordinate system stay unchanged.
 
@@ -107,7 +182,7 @@ export const sprout: Character = {
 }
 ```
 
-Register it in `src/art/catalog.ts`:
+For a native one-off, add `export default sprout` to that module and run `bun run try:pal -- ./src/art/sprout.ts`. After approval, register it in `src/art/catalog.ts` for the shared browser/production catalog:
 
 ```ts
 import { compactJelly, compactBucket } from './compact'
@@ -128,7 +203,7 @@ The watcher publishes a new screen automatically. Select **Test sprout → Gold*
 - `Character` owns IDs, names, `skins`, compatible hat IDs, defaults, anchor, bounds, and `draw(pose, skin)`. `Pose` supplies `dy`, `eyeDx`, `blink`, and the standard seven-mood vocabulary. Return a fresh 24 × 24 frame of opaque `#rrggbb` or `null` pixels. Do not introduce timers into art definitions.
 - The composer draws the **base/face first, then the hat layer**. `Hat.draw(pose, anchor)` returns another transparent 24 × 24 frame; opaque accessory pixels replace base pixels. The current API has one foreground accessory layer, not arbitrary z-layers. Compatibility lives on `Character.hats`; `none` is always accepted. Include `none` in the catalog and use existing IDs in defaults.
 - Apply the same motion transform exactly once to both body and accessory. Compact Jelly uses `Math.sign(pose.dy)` for one-half-cell work/error/hop movement; full-size references retain the original offsets. Hat coordinates are relative to the character anchor. Thinking moves eyes/blinks while body/hat stay still. Keep the tiny line mouth and unchanged head silhouette.
-- Jelly's bucket underside is continuous. Preserve **one visible blue source-pixel row between brim and working eyebrows** in every skin/pose. Keep face pixels clear of opaque accessory pixels. These are art/test requirements, not a runtime collision solver; the current `Character` type has no declarative face-clearance field.
+- Jelly's bucket has an uneven, asymmetric downturned hem with intentional gaps. Preserve **one visible blue source-pixel row between brim and working eyebrows** in every skin/pose. Keep face pixels clear of opaque accessory pixels. These are art/test requirements, not a runtime collision solver; the current `Character` type has no declarative face-clearance field.
 - Declare the fixed union of visible art across all compatible hats and animations. Compact Jelly's union is `{ x: 2, y: 2, width: 14, height: 14 }`, including its one-pixel hop. Its hatted footprint is 14 columns × 13 source pixels (seven occupied terminal rows). Every native perch crops to the selected character's horizontal bounds and sizes from its vertical union; new art can use the full 24 × 24 canvas. The crop never follows individual animation frames, so hops retain stable alignment.
 - Native geometry adds one blank cell above the union (plus a top half-pixel when needed to pair its bottom row): Jelly has a 14×16 crop / nine-row perch and eight-row prompt reservation. Prompt nesting uses only blank input padding. Sidebar adds one further blank margin row before the path. Waiting uses the full reservation; measured available space must fit the selected geometry plus request clearance. Never enlarge artwork into editable text, attachment labels, footer text, or request controls.
 - `src/art/compact.ts` is the production small drawing, shared by browser placement and native rendering. `jelly.ts`, `hats.ts`, `referenceCatalog`, and all 42 approved v9 fixtures retain the full-size source. Compact facial features and brim clearance are deliberately authored rather than automatically resampled. This is the default drawing, with no size picker.
